@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### `Changed`
 
 - [#61](https://github.com/nf-core/riboseq/pull/61) - Update Metro Map ([@maxulysse](https://github.com/maxulysse), reviewed by [@drpatelh](https://github.com/drpatelh))
+- [#71](https://github.com/nf-core/riboseq/pull/71) - Template update for nf-core/tools v3.0.2 ([@nf-corebot](https://github.com/nf-corebot), ([@maxulysse](https://github.com/maxulysse), reviewed by [@JackCurragh](https://github.com/JackCurragh)), [@FelixKrueger](https://github.com/FelixKrueger))
 
 ### `Fixed`
 
@@ -17,6 +18,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#61](https://github.com/nf-core/riboseq/pull/61) - Update subworkflow `utils_nfcore_pipeline` ([@maxulysse](https://github.com/maxulysse), reviewed by [@drpatelh](https://github.com/drpatelh))
 
 ### `Dependencies`
+
+| Dependency | Old version | New version |
+| ---------- | ----------- | ----------- |
+| `MultiQC`  | 1.21        | 1.25.1      |
+
+### `Parameters`
+
+| Old parameter                        | New parameter   |
+| ------------------------------------ | --------------- |
+|                                      | `--help_full`   |
+|                                      | `--show_hidden` |
+| `--validationFailUnrecognisedParams` |                 |
+| `--validationLenientMode`            |                 |
+| `--validationSchemaIgnoreParams`     |                 |
+| `--validationShowHiddenParams`       |                 |
 
 ### `Deprecated`
 
