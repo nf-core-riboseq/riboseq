@@ -17,13 +17,13 @@ preprocessing/fastqc/*_fastqc.{html,zip}
 preprocessing/sortmerna/*.sortmerna.log
 preprocessing/trimgalore/*.fastq.gz_trimming_report.txt
 preprocessing/trimgalore/fastqc/*_fastqc.{html,zip}
+quantification/salmon/*/aux_info/ambig_info.tsv
 quantification/salmon/*/aux_info/fld.gz
 quantification/salmon/*/aux_info/meta_info.json
 quantification/salmon/*/libParams/flenDist.txt
 quantification/salmon/*/logs/salmon_quant.log
 quantification/salmon/*/quant.genes.sf
 quantification/salmon/*/quant.sf
-quantification/salmon/SRX11780879/aux_info/ambig_info.tsv
 quantification/salmon/salmon.merged.gene.SummarizedExperiment.rds
 quantification/salmon/salmon.merged.gene.length_scaled.SummarizedExperiment.rds
 quantification/salmon/salmon.merged.gene.scaled.SummarizedExperiment.rds
