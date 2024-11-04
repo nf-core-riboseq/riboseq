@@ -384,13 +384,31 @@ workflow RIBOSEQ {
         ch_multiqc_files                      = ch_multiqc_files.mix(ch_collated_versions)
         ch_multiqc_files                      = ch_multiqc_files.mix(ch_methods_description.collectFile(name: 'methods_description_mqc.yaml', sort: true))
 
+        ch_name_replacements = ch_fastq
+            .map{ meta, reads ->
+                def name1 = file(reads[0][0]).simpleName + "\t" + meta.id + '_1'
+                def fastqcnames = meta.id + "_raw\t" + meta.id + "\n" + meta.id + "_trimmed\t" + meta.id
+                if (reads[0][1] ){
+                    def name2 = file(reads[0][1]).simpleName + "\t" + meta.id + '_2'
+                    def fastqcnames1 = meta.id + "_raw_1\t" + meta.id + "_1\n" + meta.id + "_trimmed_1\t" + meta.id + "_1"
+                    def fastqcnames2 = meta.id + "_raw_2\t" + meta.id + "_2\n" + meta.id + "_trimmed_2\t" + meta.id + "_2"
+                    return [ name1, name2, fastqcnames1, fastqcnames2 ]
+                } else{
+                    return [ name1, fastqcnames ]
+                }
+            }
+            .flatten()
+            .collectFile(name: 'name_replacement.txt', newLine: true)
+
         MULTIQC (
             ch_multiqc_files.collect(),
             ch_multiqc_config.toList(),
             ch_multiqc_custom_config.toList(),
-            ch_multiqc_logo.toList()
+            ch_multiqc_logo.toList(),
+            ch_name_replacements,
+            []
         )
-        ch_multiqc_report = MULTIQC.out.report.toList()
+    ch_multiqc_report = MULTIQC.out.report.toList()
     } else {
         ch_multiqc_report = Channel.empty()
     }
