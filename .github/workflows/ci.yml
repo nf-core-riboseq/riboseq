@@ -56,10 +56,10 @@ jobs:
           echo ${{ steps.list.outputs.nf_test_files }}
 
   test:
-    name: "Run pipeline with test data (${{ matrix.NXF_VER }} | ${{ matrix.nf_test_files }} | ${{ matrix.profile }})"
+    name: "Run pipeline with test data (${{ matrix.nf_test_files }} ${{ matrix.profile }} NF-${{ matrix.NXF_VER }})"
     needs: [nf-test-changes]
     # Only run on push if this is the nf-core dev branch (merged PRs)
-    if: "${{ (github.event_name != 'push' || (github.event_name == 'push' && github.repository == 'nf-core/riboseq') && needs.nf-test-changes.outputs.nf_test_files != '[]')}}"
+    if: "${{ ((github.event_name != 'push' || (github.event_name == 'push' && github.repository == 'nf-core/riboseq')) && needs.nf-test-changes.outputs.nf_test_files != '[]') }}"
     runs-on: ubuntu-latest
     strategy:
       matrix:
