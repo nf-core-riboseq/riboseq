@@ -14,29 +14,32 @@ The directories listed below will be created in the results directory after the 
 
 The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes data using the following steps:
 
-- [Preprocessing](#preprocessing)
-  - [cat](#cat) - Merge re-sequenced FastQ files
-  - [FastQC](#fastqc) - Raw read QC
-  - [UMI-tools extract](#umi-tools-extract) - UMI barcode extraction
-  - [TrimGalore](#trimgalore) - Adapter and quality trimming
-  - [fastp](#fastp) - Adapter and quality trimming
-  - [BBSplit](#bbsplit) - Removal of genome contaminants
-  - [SortMeRNA](#sortmerna) - Removal of ribosomal RNA
-  - [Ribo-TISH quality](#ribo-tish-quality) - Riboseq QC plots generated with the Ribo-TISH 'quality' command
-- [Alignment and quantification](#alignment-and-quantification)
-  - [STAR](#star) - Fast spliced aware genome alignment
-- [Alignment post-processing](#alignment-post-processing)
-  - [SAMtools](#samtools) - Sort and index alignments
-  - [UMI-tools dedup](#umi-tools-dedup) - UMI-based deduplication
-  - [picard MarkDuplicates](#picard-markduplicates) - Duplicate read marking
-- [ORF prediction](#orf-predictions) - Open reading frame (ORF prediction)
-  - [Ribo-TISH](#ribo-tish-predict) - Riboseq ORF predictions by Ribo-TISH
-  - [Ribotricer](#ribotricer-detect-orfs) - Riboseq QC and ORF predictions by Ribotricer
-- [Translational efficiency analysis](#translational-efficiency)
-  - [anota2seq](#anota2seq) - Translational efficiency analysis with anota2seq
-- [Workflow reporting and genomes](#workflow-reporting-and-genomes)
-  - [Reference genome files](#reference-genome-files) - Saving reference genome indices/files
-  - [Pipeline information](#pipeline-information) - Report metrics generated during the workflow execution
+- [nf-core/riboseq: Output](#nf-coreriboseq-output)
+  - [Introduction](#introduction)
+  - [Pipeline overview](#pipeline-overview)
+  - [Preprocessing](#preprocessing)
+    - [cat](#cat)
+    - [FastQC](#fastqc)
+    - [UMI-tools extract](#umi-tools-extract)
+    - [TrimGalore](#trimgalore)
+    - [fastp](#fastp)
+    - [BBSplit](#bbsplit)
+    - [SortMeRNA](#sortmerna)
+  - [Alignment](#alignment)
+    - [STAR](#star)
+  - [UMI-tools deduplication](#umi-tools-deduplication)
+  - [Riboseq-specific QC](#riboseq-specific-qc)
+    - [Ribo-TISH quality](#ribo-tish-quality)
+    - [Ribotricer detect-orfs QC outputs](#ribotricer-detect-orfs-qc-outputs)
+  - [ORF predictions](#orf-predictions)
+    - [Ribo-TISH predict](#ribo-tish-predict)
+    - [Ribotricer detect-orfs](#ribotricer-detect-orfs)
+  - [Quantification](#quantification)
+  - [Translational efficiency](#translational-efficiency)
+    - [MultiQC](#multiqc)
+  - [Workflow reporting and genomes](#workflow-reporting-and-genomes)
+    - [Reference genome files](#reference-genome-files)
+    - [Pipeline information](#pipeline-information)
 
 ## Preprocessing
 
