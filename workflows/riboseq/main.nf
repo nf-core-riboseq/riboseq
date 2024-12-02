@@ -180,7 +180,7 @@ workflow RIBOSEQ {
 
     ch_genome_bam              = FASTQ_ALIGN_STAR.out.bam
     ch_genome_bam_index        = FASTQ_ALIGN_STAR.out.bai
-    ch_transcriptome_bam       = FASTQ_ALIGN_STAR.out.bam_transcript
+    ch_transcriptome_bam       = FASTQ_ALIGN_STAR.out.orig_bam_transcript
     ch_transcriptome_bai       = FASTQ_ALIGN_STAR.out.bai_transcript
     ch_versions                = ch_versions.mix(FASTQ_ALIGN_STAR.out.versions)
 
@@ -224,7 +224,7 @@ workflow RIBOSEQ {
             .mix(BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_TRANSCRIPTOME.out.idxstats.collect{it[1]})
 
         // Prepare trancriptome BAM for Salmon. This requires a Samtools name
-        // sort and a specific umittools command
+        // sort and a specific umitools command
 
         SAMTOOLS_SORT (
             BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_TRANSCRIPTOME.out.bam,
@@ -325,6 +325,8 @@ workflow RIBOSEQ {
     //
     // SUBWORKFLOW: Count reads from BAM alignments using Salmon
     //
+    ch_transcriptome_bam_for_quantification = params.with_umi ? ch_transcriptome_bam_for_salmon : ch_transcriptome_bam
+
     QUANTIFY_STAR_SALMON (
         ch_samplesheet.map { [ [:], it ] },
         ch_transcriptome_bam,
