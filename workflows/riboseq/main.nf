@@ -48,7 +48,8 @@ def filterGtf =
 //
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
 //
-include { BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS } from '../../subworkflows/nf-core/bam_dedup_stats_samtools_umitools/main'
+include { BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS as BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_GENOME} from '../../subworkflows/nf-core/bam_dedup_stats_samtools_umitools/main'
+include { BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS as BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_TRANSCRIPTOME} from '../../subworkflows/nf-core/bam_dedup_stats_samtools_umitools/main'
 include { PREPROCESS_RNASEQ                 } from '../../subworkflows/nf-core/preprocess_rnaseq'
 include { FASTQ_ALIGN_STAR                  } from '../../subworkflows/nf-core/fastq_align_star'
 
@@ -179,7 +180,8 @@ workflow RIBOSEQ {
 
     ch_genome_bam              = FASTQ_ALIGN_STAR.out.bam
     ch_genome_bam_index        = FASTQ_ALIGN_STAR.out.bai
-    ch_transcriptome_bam       = FASTQ_ALIGN_STAR.out.orig_bam_transcript
+    ch_transcriptome_bam       = FASTQ_ALIGN_STAR.out.bam_transcript
+    ch_transcriptome_bai       = FASTQ_ALIGN_STAR.out.bai_transcript
     ch_versions                = ch_versions.mix(FASTQ_ALIGN_STAR.out.versions)
 
     ch_multiqc_files = ch_multiqc_files
