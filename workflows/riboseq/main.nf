@@ -329,7 +329,7 @@ workflow RIBOSEQ {
 
     QUANTIFY_STAR_SALMON (
         ch_samplesheet.map { [ [:], it ] },
-        ch_transcriptome_bam,
+        ch_transcriptome_bam_for_quantification,
         [],
         ch_transcript_fasta,
         ch_gtf,
