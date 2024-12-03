@@ -97,7 +97,7 @@
                     },
                     "ribotricer/prepareorfs": {
                         "branch": "master",
-                        "git_sha": "db0c1159f2d90a0e0ee6753f7299b4ec68439c39",
+                        "git_sha": "2cc745f8a5649be9fe6fd95c6eca92e7c95ce0bb",
                         "installed_by": ["modules"]
                     },
                     "rsem/preparereference": {
