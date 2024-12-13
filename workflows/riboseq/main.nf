@@ -7,10 +7,10 @@
 //
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
 //
-include { BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS as BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_GENOME} from '../../subworkflows/nf-core/bam_dedup_stats_samtools_umitools/main'
-include { BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS as BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_TRANSCRIPTOME} from '../../subworkflows/nf-core/bam_dedup_stats_samtools_umitools/main'
+include { BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS as BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_GENOME        } from '../../subworkflows/nf-core/bam_dedup_stats_samtools_umitools/main'
+include { BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS as BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_TRANSCRIPTOME } from '../../subworkflows/nf-core/bam_dedup_stats_samtools_umitools/main'
+include { FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS                                                 } from '../../subworkflows/nf-core/fastq_qc_trim_filter_setstrandedness/main'
 include { BAM_DEDUP_UMI      } from '../../subworkflows/nf-core/bam_dedup_umi'
-include { PREPROCESS_RNASEQ  } from '../../subworkflows/nf-core/preprocess_rnaseq'
 include { FASTQ_ALIGN_STAR   } from '../../subworkflows/nf-core/fastq_align_star'
 
 /*
@@ -67,6 +67,7 @@ workflow RIBOSEQ {
     ch_star_index       // channel: path(star/index/)
     ch_salmon_index     // channel: path(salmon/index/)
     ch_bbsplit_index    // channel: path(bbsplit/index/)
+    ch_rrna_fastas      // channel: path(fasta)
     ch_sortmerna_index  // channel: path(sortmerna/index/)
 
     main:
@@ -138,7 +139,11 @@ workflow RIBOSEQ {
     // contaminant removal, strandedness inference
     //
 
-    PREPROCESS_RNASEQ (
+    // The subworkflow only has to do Salmon indexing if it discovers 'auto'
+    // samples, and if we haven't already made one elsewhere
+    salmon_index_available = params.salmon_index || (!params.skip_pseudo_alignment && params.pseudo_aligner == 'salmon')
+
+    FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS (
         ch_fastq,
         ch_fasta,
         ch_transcript_fasta,
@@ -146,22 +151,26 @@ workflow RIBOSEQ {
         ch_salmon_index,
         ch_sortmerna_index,
         ch_bbsplit_index,
-        ch_ribo_db,
+        ch_rrna_fastas,
         params.skip_bbsplit,
         params.skip_fastqc || params.skip_qc,
         params.skip_trimming,
         params.skip_umi_extract,
-        !params.salmon_index && !('salmon' in prepareToolIndices),
-        !params.sortmerna_index && !('sortmerna' in prepareToolIndices),
+        !salmon_index_available,
+        !params.sortmerna_index && params.remove_ribo_rna,
         params.trimmer,
         params.min_trimmed_reads,
         params.save_trimmed,
         params.remove_ribo_rna,
         params.with_umi,
-        params.umi_discard_read
+        params.umi_discard_read,
+        params.stranded_threshold,
+        params.unstranded_threshold,
+        params.skip_linting
     )
-    ch_multiqc_files = ch_multiqc_files.mix(PREPROCESS_RNASEQ.out.multiqc_files)
-    ch_versions      = ch_versions.mix(PREPROCESS_RNASEQ.out.versions)
+
+    ch_multiqc_files = ch_multiqc_files.mix(FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.multiqc_files)
+    ch_versions      = ch_versions.mix(FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.versions)
 
     //
     // SUBWORKFLOW: align with STAR, produce both genomic and transcriptomic
@@ -169,7 +178,7 @@ workflow RIBOSEQ {
     //
 
     FASTQ_ALIGN_STAR(
-        PREPROCESS_RNASEQ.out.reads,
+        FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.reads,
         ch_star_index.map { [ [:], it ] },
         ch_gtf.map { [ [:], it ] },
         params.star_ignore_sjdbgtf,
