@@ -27,6 +27,57 @@ CONTROL_REP1,AEG588A1_S1_L003_R1_001.fastq.gz,AEG588A1_S1_L003_R2_001.fastq.gz,a
 CONTROL_REP1,AEG588A1_S1_L004_R1_001.fastq.gz,AEG588A1_S1_L004_R2_001.fastq.gz,auto,riboseq
 ```
 
+### Linting
+
+By default, the pipeline will run [fq lint](https://github.com/stjude-rust-labs/fq) on all input FASTQ files, both at the start of preprocessing and after each preprocessing step that manipulates FASTQ files. If errors are found, and error will be reported and the workflow will stop.
+
+The `extra_fqlint_args` parameter can be manipulated to disable [any validator](https://github.com/stjude-rust-labs/fq?tab=readme-ov-file#validators) from `fq` you wish. For example, we have found that checks on the names of paired reads are prone to failure, so that check is disabled by default (setting `extra_fqlint_args` to `--disable-validator P001`).
+
+### Strandedness Prediction
+
+If you set the strandedness value to `auto`, the pipeline will sub-sample the input FastQ files to 1 million reads, use Salmon Quant to automatically infer the strandedness, and then propagate this information through the rest of the pipeline. This behavior is controlled by the `--stranded_threshold` and `--unstranded_threshold` parameters, which are set to 0.8 and 0.1 by default, respectively. This means:
+
+- **Forward stranded:** At least 80% of the fragments are in the 'forward' orientation.
+- **Unstranded:** The forward and reverse fractions differ by less than 10%.
+- **Undetermined:** Samples that do not meet either criterion, possibly indicating issues such as genomic DNA contamination.
+
+**Note:** These thresholds apply to both the strandedness inferred from Salmon outputs for input to the pipeline and how strandedness is inferred from RSeQC results using pipeline outputs.
+
+#### Usage Examples
+
+1. **Forward Stranded Sample:**
+
+   - Forward fraction: 0.85
+   - Reverse fraction: 0.15
+   - **Classification:** Forward stranded
+
+2. **Reverse Stranded Sample:**
+
+   - Forward fraction: 0.1
+   - Reverse fraction: 0.9
+   - **Classification:** Reverse stranded
+
+3. **Unstranded Sample:**
+
+   - Forward fraction: 0.45
+   - Reverse fraction: 0.55
+   - **Classification:** Unstranded
+
+4. **Undetermined Sample:**
+   - Forward fraction: 0.6
+   - Reverse fraction: 0.4
+   - **Classification:** Undetermined
+
+You can control the stringency of this behavior with `--stranded_threshold` and `--unstranded_threshold`.
+
+#### Errors and Reporting
+
+The results of strandedness inference are displayed in the MultiQC report under 'Strandedness Checks'. This shows any provided strandedness and the results inferred by both Salmon (when strandedness is set to 'auto') and RSeQC. Mismatches between input strandedness (explicitly provided by the user or inferred by Salmon) and output strandedness from RSeQC are marked as fails. For example, if a user specifies 'forward' as strandedness for a library that is actually reverse stranded, this is marked as a fail.
+
+![MultiQC - Strand check table](images/mqc_strand_check.png)
+
+Be sure to check the strandedness report when reviewing the QC for your samples.
+
 ### Full samplesheet
 
 The pipeline will auto-detect whether a sample is single- or paired-end using the information provided in the samplesheet. The samplesheet can have as many columns as you desire, however, there is a strict requirement for the first 5 columns to match those defined in the table below.
