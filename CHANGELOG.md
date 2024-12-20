@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#60](https://github.com/nf-core/riboseq/pull/60) - Pass empty value to samtools sort in UMI handling branch ([@JackCurragh](https://github.com/JackCurragh), reviewed by [@FelixKrueger](https://github.com/FelixKrueger), [@maxulysse](https://github.com/maxulysse))
 - [#61](https://github.com/nf-core/riboseq/pull/61) - Update subworkflow `utils_nfcore_pipeline` ([@maxulysse](https://github.com/maxulysse), reviewed by [@drpatelh](https://github.com/drpatelh))
 - [#75](https://github.com/nf-core/riboseq/pull/75) - UMI fixes: solve deduplication issue and update input handling for Salmon ([@iraiosub](https://github.com/iraiosub), reviewed by [@FelixKrueger](https://github.com/FelixKrueger), [@pinin4fjords](https://github.com/pinin4fjords))
+- [#79](https://github.com/nf-core/riboseq/pull/75) - Move UMI handling to subworkflow, update modules and subworkflows, deal with docs and config fallout ([@pinin4fjords](https://github.com/pinin4fjords), reviewed by [@FelixKrueger](https://github.com/FelixKrueger))
 
 ### `Dependencies`
 
@@ -28,14 +29,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### `Parameters`
 
-| Old parameter                        | New parameter   |
-| ------------------------------------ | --------------- |
-|                                      | `--help_full`   |
-|                                      | `--show_hidden` |
-| `--validationFailUnrecognisedParams` |                 |
-| `--validationLenientMode`            |                 |
-| `--validationSchemaIgnoreParams`     |                 |
-| `--validationShowHiddenParams`       |                 |
+| Old parameter                        | New parameter         |
+| ------------------------------------ | --------------------- |
+|                                      | `--help_full`         |
+|                                      | `--show_hidden`       |
+|                                      | `--skip_linting`      |
+|                                      | `--extra_fqlint_args` |
+|                                      | `--umi_dedup_tool`    |
+| `--validationFailUnrecognisedParams` |                       |
+| `--validationLenientMode`            |                       |
+| `--validationSchemaIgnoreParams`     |                       |
+| `--validationShowHiddenParams`       |                       |
 
 ### `Deprecated`
 

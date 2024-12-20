@@ -1,46 +1,5 @@
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    VALIDATE INPUTS
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
-
-// Check rRNA databases for sortmerna
-if (params.remove_ribo_rna) {
-    ch_ribo_db = file(params.ribo_database_manifest)
-    if (ch_ribo_db.isEmpty()) {exit 1, "File provided with --ribo_database_manifest is empty: ${ch_ribo_db.getName()}!"}
-} else {
-    ch_ribo_db = Channel.empty()
-}
-
-// Check if file with list of fastas is provided when running BBSplit
-if (!params.skip_bbsplit && !params.bbsplit_index && params.bbsplit_fasta_list) {
-    ch_bbsplit_fasta_list = file(params.bbsplit_fasta_list)
-    if (ch_bbsplit_fasta_list.isEmpty()) {exit 1, "File provided with --bbsplit_fasta_list is empty: ${ch_bbsplit_fasta_list.getName()}!"}
-}
-
-// Check alignment parameters
-def prepareToolIndices  = []
-if (!params.skip_bbsplit) { prepareToolIndices << 'bbsplit' }
-if (params.remove_ribo_rna) { prepareToolIndices << 'sortmerna' }
-if (!params.skip_alignment) { prepareToolIndices << params.aligner }
-
-// Determine whether to filter the GTF or not
-def filterGtf =
-    ((
-        // Condition 1: Alignment is required and aligner is set
-        !params.skip_alignment && params.aligner
-    ) ||
-    (
-        // Condition 2: Transcript FASTA file is not provided
-        !params.transcript_fasta
-    )) &&
-    (
-        // Condition 3: --skip_gtf_filter is not provided
-        !params.skip_gtf_filter
-    )
-
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     IMPORT LOCAL MODULES/SUBWORKFLOWS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
@@ -48,10 +7,11 @@ def filterGtf =
 //
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
 //
-include { BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS as BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_GENOME} from '../../subworkflows/nf-core/bam_dedup_stats_samtools_umitools/main'
-include { BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS as BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_TRANSCRIPTOME} from '../../subworkflows/nf-core/bam_dedup_stats_samtools_umitools/main'
-include { PREPROCESS_RNASEQ                 } from '../../subworkflows/nf-core/preprocess_rnaseq'
-include { FASTQ_ALIGN_STAR                  } from '../../subworkflows/nf-core/fastq_align_star'
+include { BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS as BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_GENOME        } from '../../subworkflows/nf-core/bam_dedup_stats_samtools_umitools/main'
+include { BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS as BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_TRANSCRIPTOME } from '../../subworkflows/nf-core/bam_dedup_stats_samtools_umitools/main'
+include { FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS                                                 } from '../../subworkflows/nf-core/fastq_qc_trim_filter_setstrandedness/main'
+include { BAM_DEDUP_UMI      } from '../../subworkflows/nf-core/bam_dedup_umi'
+include { FASTQ_ALIGN_STAR   } from '../../subworkflows/nf-core/fastq_align_star'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -107,9 +67,51 @@ workflow RIBOSEQ {
     ch_star_index       // channel: path(star/index/)
     ch_salmon_index     // channel: path(salmon/index/)
     ch_bbsplit_index    // channel: path(bbsplit/index/)
+    ch_rrna_fastas      // channel: path(fasta)
     ch_sortmerna_index  // channel: path(sortmerna/index/)
 
     main:
+
+    /*
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        VALIDATE INPUTS
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    */
+
+    // Check rRNA databases for sortmerna
+    if (params.remove_ribo_rna) {
+        ch_ribo_db = file(params.ribo_database_manifest)
+        if (ch_ribo_db.isEmpty()) {exit 1, "File provided with --ribo_database_manifest is empty: ${ch_ribo_db.getName()}!"}
+    } else {
+        ch_ribo_db = Channel.empty()
+    }
+
+    // Check if file with list of fastas is provided when running BBSplit
+    if (!params.skip_bbsplit && !params.bbsplit_index && params.bbsplit_fasta_list) {
+        ch_bbsplit_fasta_list = file(params.bbsplit_fasta_list)
+        if (ch_bbsplit_fasta_list.isEmpty()) {exit 1, "File provided with --bbsplit_fasta_list is empty: ${ch_bbsplit_fasta_list.getName()}!"}
+    }
+
+    // Check alignment parameters
+    def prepareToolIndices  = []
+    if (!params.skip_bbsplit) { prepareToolIndices << 'bbsplit' }
+    if (params.remove_ribo_rna) { prepareToolIndices << 'sortmerna' }
+    if (!params.skip_alignment) { prepareToolIndices << params.aligner }
+
+    // Determine whether to filter the GTF or not
+    def filterGtf =
+        ((
+            // Condition 1: Alignment is required and aligner is set
+            !params.skip_alignment && params.aligner
+        ) ||
+        (
+            // Condition 2: Transcript FASTA file is not provided
+            !params.transcript_fasta
+        )) &&
+        (
+            // Condition 3: --skip_gtf_filter is not provided
+            !params.skip_gtf_filter
+        )
 
     ch_multiqc_files = Channel.empty()
 
@@ -137,7 +139,11 @@ workflow RIBOSEQ {
     // contaminant removal, strandedness inference
     //
 
-    PREPROCESS_RNASEQ (
+    // The subworkflow only has to do Salmon indexing if it discovers 'auto'
+    // samples, and if we haven't already made one elsewhere
+    salmon_index_available = params.salmon_index || (!params.skip_pseudo_alignment && params.pseudo_aligner == 'salmon')
+
+    FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS (
         ch_fastq,
         ch_fasta,
         ch_transcript_fasta,
@@ -145,22 +151,26 @@ workflow RIBOSEQ {
         ch_salmon_index,
         ch_sortmerna_index,
         ch_bbsplit_index,
-        ch_ribo_db,
+        ch_rrna_fastas,
         params.skip_bbsplit,
         params.skip_fastqc || params.skip_qc,
         params.skip_trimming,
         params.skip_umi_extract,
-        !params.salmon_index && !('salmon' in prepareToolIndices),
-        !params.sortmerna_index && !('sortmerna' in prepareToolIndices),
+        !salmon_index_available,
+        !params.sortmerna_index && params.remove_ribo_rna,
         params.trimmer,
         params.min_trimmed_reads,
         params.save_trimmed,
         params.remove_ribo_rna,
         params.with_umi,
-        params.umi_discard_read
+        params.umi_discard_read,
+        params.stranded_threshold,
+        params.unstranded_threshold,
+        params.skip_linting
     )
-    ch_multiqc_files = ch_multiqc_files.mix(PREPROCESS_RNASEQ.out.multiqc_files)
-    ch_versions      = ch_versions.mix(PREPROCESS_RNASEQ.out.versions)
+
+    ch_multiqc_files = ch_multiqc_files.mix(FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.multiqc_files)
+    ch_versions      = ch_versions.mix(FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.versions)
 
     //
     // SUBWORKFLOW: align with STAR, produce both genomic and transcriptomic
@@ -168,7 +178,7 @@ workflow RIBOSEQ {
     //
 
     FASTQ_ALIGN_STAR(
-        PREPROCESS_RNASEQ.out.reads,
+        FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.reads,
         ch_star_index.map { [ [:], it ] },
         ch_gtf.map { [ [:], it ] },
         params.star_ignore_sjdbgtf,
@@ -196,61 +206,23 @@ workflow RIBOSEQ {
 
     if (params.with_umi) {
 
-        // Deduplicate genome BAM file before downstream analysis
-
-        BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_GENOME (
+        BAM_DEDUP_UMI(
             ch_genome_bam.join(ch_genome_bam_index, by: [0]),
-            params.umitools_dedup_stats
+            ch_fasta.map { [ [:], it ] },
+            params.umi_dedup_tool,
+            params.umitools_dedup_stats,
+            params.bam_csi_index,
+            ch_transcriptome_bam,
+            ch_transcript_fasta.map { [ [:], it ] }
         )
-        ch_genome_bam       = BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_GENOME.out.bam
-        ch_genome_bam_index = BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_GENOME.out.bai
+
+        ch_genome_bam        = BAM_DEDUP_UMI.out.bam
+        ch_transcriptome_bam = BAM_DEDUP_UMI.out.transcriptome_bam
+        ch_genome_bam_index  = BAM_DEDUP_UMI.out.bai
+        ch_versions          = ch_versions.mix(BAM_DEDUP_UMI.out.versions)
 
         ch_multiqc_files = ch_multiqc_files
-            .mix(BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_GENOME.out.stats.collect{it[1]})
-            .mix(BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_GENOME.out.flagstat.collect{it[1]})
-            .mix(BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_GENOME.out.idxstats.collect{it[1]})
-
-        // Deduplicate transcriptome BAM file before downstream analysis
-
-        BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_TRANSCRIPTOME (
-            ch_transcriptome_bam.join(ch_transcriptome_bai, by: [0]),
-            params.umitools_dedup_stats
-        )
-        ch_transcriptome_bam       = BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_TRANSCRIPTOME.out.bam
-
-        ch_multiqc_files = ch_multiqc_files
-            .mix(BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_TRANSCRIPTOME.out.stats.collect{it[1]})
-            .mix(BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_TRANSCRIPTOME.out.flagstat.collect{it[1]})
-            .mix(BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_TRANSCRIPTOME.out.idxstats.collect{it[1]})
-
-        // Prepare trancriptome BAM for Salmon. This requires a Samtools name
-        // sort and a specific umitools command
-
-        SAMTOOLS_SORT (
-            BAM_DEDUP_STATS_SAMTOOLS_UMITOOLS_TRANSCRIPTOME.out.bam,
-            [[:],[]]
-        )
-
-        // Only run prepare_for_rsem.py on paired-end BAM files
-        SAMTOOLS_SORT.out.bam
-            .branch { meta, bam ->
-                single_end: meta.single_end
-                    return [ meta, bam ]
-                paired_end: !meta.single_end
-                    return [ meta, bam ]
-            }
-            .set { ch_umitools_dedup_bam }
-
-        // Fix paired-end reads in name sorted BAM file
-        // See: https://github.com/nf-core/rnaseq/issues/828
-        UMITOOLS_PREPAREFORSALMON (
-            ch_umitools_dedup_bam.paired_end.map{meta, bam -> [meta, bam, []]}
-        )
-        ch_versions = ch_versions.mix(UMITOOLS_PREPAREFORSALMON.out.versions.first())
-
-        ch_umitools_dedup_bam.single_end
-            .mix(UMITOOLS_PREPAREFORSALMON.out.bam)
-            .set { ch_transcriptome_bam_for_salmon }
+            .mix(BAM_DEDUP_UMI.out.multiqc_files)
     }
 
     //
@@ -325,11 +297,10 @@ workflow RIBOSEQ {
     //
     // SUBWORKFLOW: Count reads from BAM alignments using Salmon
     //
-    ch_transcriptome_bam_for_quantification = params.with_umi ? ch_transcriptome_bam_for_salmon : ch_transcriptome_bam
 
     QUANTIFY_STAR_SALMON (
         ch_samplesheet.map { [ [:], it ] },
-        ch_transcriptome_bam_for_quantification,
+        ch_transcriptome_bam,
         [],
         ch_transcript_fasta,
         ch_gtf,

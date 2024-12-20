@@ -1,35 +1,82 @@
 import groovy.json.JsonSlurper
 
-include { BBMAP_BBSPLIT                   } from '../../../modules/nf-core/bbmap/bbsplit'
-include { CAT_FASTQ                       } from '../../../modules/nf-core/cat/fastq/main'
-include { SORTMERNA                       } from '../../../modules/nf-core/sortmerna/main'
-include { SORTMERNA as SORTMERNA_INDEX    } from '../../../modules/nf-core/sortmerna/main'
+include { BBMAP_BBSPLIT                      } from '../../../modules/nf-core/bbmap/bbsplit'
+include { CAT_FASTQ                          } from '../../../modules/nf-core/cat/fastq/main'
+include { SORTMERNA                          } from '../../../modules/nf-core/sortmerna/main'
+include { SORTMERNA as SORTMERNA_INDEX       } from '../../../modules/nf-core/sortmerna/main'
+include { FQ_LINT                            } from '../../../modules/nf-core/fq/lint/main'
+include { FQ_LINT as FQ_LINT_AFTER_TRIMMING  } from '../../../modules/nf-core/fq/lint/main'
+include { FQ_LINT as FQ_LINT_AFTER_BBSPLIT   } from '../../../modules/nf-core/fq/lint/main'
+include { FQ_LINT as FQ_LINT_AFTER_SORTMERNA } from '../../../modules/nf-core/fq/lint/main'
 
-include { FASTQ_SUBSAMPLE_FQ_SALMON        } from '../fastq_subsample_fq_salmon'
-include { FASTQ_FASTQC_UMITOOLS_TRIMGALORE } from '../fastq_fastqc_umitools_trimgalore'
-include { FASTQ_FASTQC_UMITOOLS_FASTP      } from '../fastq_fastqc_umitools_fastp'
+include { FASTQ_SUBSAMPLE_FQ_SALMON          } from '../fastq_subsample_fq_salmon'
+include { FASTQ_FASTQC_UMITOOLS_TRIMGALORE   } from '../fastq_fastqc_umitools_trimgalore'
+include { FASTQ_FASTQC_UMITOOLS_FASTP        } from '../fastq_fastqc_umitools_fastp'
 
 def pass_trimmed_reads = [:]
 
-public static String getSalmonInferredStrandedness(json_file) {
-    def lib_type = new JsonSlurper().parseText(json_file.text).get('library_types')[0]
-    def strandedness = 'reverse'
-    if (lib_type) {
-        if (lib_type in ['U', 'IU']) {
-            strandedness = 'unstranded'
-        } else if (lib_type in ['SF', 'ISF']) {
+//
+// Function to determine library type by comparing type counts.
+//
+
+//
+def calculateStrandedness(forwardFragments, reverseFragments, unstrandedFragments, stranded_threshold=0.8, unstranded_threshold=0.1) {
+    def totalFragments = forwardFragments + reverseFragments + unstrandedFragments
+    def totalStrandedFragments = forwardFragments + reverseFragments
+
+    def strandedness = 'undetermined'
+    if (totalStrandedFragments > 0) {
+        def forwardProportion = forwardFragments / (totalStrandedFragments as double)
+        def reverseProportion = reverseFragments / (totalStrandedFragments as double)
+        def proportionDifference = Math.abs(forwardProportion - reverseProportion)
+
+        if (forwardProportion >= stranded_threshold) {
             strandedness = 'forward'
-        } else if (lib_type in ['SR', 'ISR']) {
+        } else if (reverseProportion >= stranded_threshold) {
             strandedness = 'reverse'
+        } else if (proportionDifference <= unstranded_threshold) {
+            strandedness = 'unstranded'
         }
     }
-    return strandedness
+
+    return [
+        inferred_strandedness: strandedness,
+        forwardFragments: (forwardFragments / (totalFragments as double)) * 100,
+        reverseFragments: (reverseFragments / (totalFragments as double)) * 100,
+        unstrandedFragments: (unstrandedFragments / (totalFragments as double)) * 100
+    ]
+}
+
+//
+// Function that parses Salmon quant 'lib_format_counts.json' output file to get inferred strandedness
+//
+def getSalmonInferredStrandedness(json_file, stranded_threshold = 0.8, unstranded_threshold = 0.1) {
+    // Parse the JSON content of the file
+    def libCounts = new JsonSlurper().parseText(json_file.text)
+
+    // Calculate the counts for forward and reverse strand fragments
+    def forwardKeys = ['SF', 'ISF', 'MSF', 'OSF']
+    def reverseKeys = ['SR', 'ISR', 'MSR', 'OSR']
+
+    // Calculate unstranded fragments (IU and U)
+    // NOTE: this is here for completeness, but actually all fragments have a
+    // strandedness (even if the overall library does not), so all these values
+    // will be '0'. See
+    // https://groups.google.com/g/sailfish-users/c/yxzBDv6NB6I
+    def unstrandedKeys = ['IU', 'U', 'MU']
+
+    def forwardFragments = forwardKeys.collect { libCounts[it] ?: 0 }.sum()
+    def reverseFragments = reverseKeys.collect { libCounts[it] ?: 0 }.sum()
+    def unstrandedFragments = unstrandedKeys.collect { libCounts[it] ?: 0 }.sum()
+
+    // Use shared calculation function to determine strandedness
+    return calculateStrandedness(forwardFragments, reverseFragments, unstrandedFragments, stranded_threshold, unstranded_threshold)
 }
 
 //
 // Create MultiQC tsv custom content from a list of values
 //
-public static String multiqcTsvFromList(tsv_data, header) {
+def multiqcTsvFromList(tsv_data, header) {
     def tsv_string = ""
     if (tsv_data.size() > 0) {
         tsv_string += "${header.join('\t')}\n"
@@ -38,7 +85,7 @@ public static String multiqcTsvFromList(tsv_data, header) {
     return tsv_string
 }
 
-workflow PREPROCESS_RNASEQ {
+workflow FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS {
 
     take:
     ch_reads             // channel: [ val(meta), [ reads ] ]
@@ -48,7 +95,7 @@ workflow PREPROCESS_RNASEQ {
     ch_salmon_index      // channel: /path/to/salmon/index/ (optional)
     ch_sortmerna_index   // channel: /path/to/sortmerna/index/ (optional)
     ch_bbsplit_index     // channel: /path/to/bbsplit/index/ (optional)
-    ch_ribo_db           // channel: /path/to/ Text file containing paths to fasta files (one per line) that will be used to create the database for SortMeRNA. (optional)
+    ch_rrna_fastas       // channel: one or more fasta files containing rrna sequences to be passed to SortMeRNA (optional)
     skip_bbsplit         // boolean: Skip BBSplit for removal of non-reference genome reads.
     skip_fastqc          // boolean: true/false
     skip_trimming        // boolean: true/false
@@ -61,6 +108,9 @@ workflow PREPROCESS_RNASEQ {
     remove_ribo_rna      // boolean: true/false: whether to run sortmerna to remove rrnas
     with_umi             // boolean: true/false: Enable UMI-based read deduplication.
     umi_discard_read     // integer: 0, 1 or 2
+    stranded_threshold   // float: The fraction of stranded reads that must be assigned to a strandedness for confident assignment. Must be at least 0.5
+    unstranded_threshold // float: The difference in fraction of stranded reads assigned to 'forward' and 'reverse' below which a sample is classified as 'unstranded'
+    skip_linting         // boolean: true/false
 
     main:
 
@@ -68,6 +118,7 @@ workflow PREPROCESS_RNASEQ {
     ch_filtered_reads  = Channel.empty()
     ch_trim_read_count = Channel.empty()
     ch_multiqc_files   = Channel.empty()
+    ch_lint_log        = Channel.empty()
 
     ch_reads
         .branch {
@@ -89,7 +140,20 @@ workflow PREPROCESS_RNASEQ {
     .mix(ch_fastq.single)
     .set { ch_filtered_reads }
 
-    ch_versions = ch_versions.mix(CAT_FASTQ.out.versions.first().ifEmpty(null))
+    ch_versions = ch_versions.mix(CAT_FASTQ.out.versions.first())
+
+    //
+    // MODULE: Lint FastQ files
+    //
+
+    if(!skip_linting) {
+        FQ_LINT (
+            ch_filtered_reads
+        )
+        ch_versions = ch_versions.mix(FQ_LINT.out.versions.first())
+        ch_lint_log = ch_lint_log.mix(FQ_LINT.out.lint)
+        ch_reads = ch_reads.join(FQ_LINT.out.lint.map{it[0]})
+    }
 
     //
     // SUBWORKFLOW: Read QC, extract UMI and trim adapters with TrimGalore!
@@ -136,7 +200,7 @@ workflow PREPROCESS_RNASEQ {
         ch_versions = ch_versions.mix(FASTQ_FASTQC_UMITOOLS_FASTP.out.versions)
         ch_multiqc_files = FASTQ_FASTQC_UMITOOLS_FASTP.out.fastqc_raw_zip
             .mix(FASTQ_FASTQC_UMITOOLS_FASTP.out.fastqc_trim_zip)
-            .mix(FASTQ_FASTQC_UMITOOLS_FASTP.out.trim_json.map{tuple(it[0], [it[1]])})
+            .mix(FASTQ_FASTQC_UMITOOLS_FASTP.out.trim_json)
             .mix(ch_multiqc_files)
     }
 
@@ -164,7 +228,16 @@ workflow PREPROCESS_RNASEQ {
     ch_multiqc_files = ch_multiqc_files
         .mix(
             ch_fail_trimming_multiqc.collectFile(name: 'fail_trimmed_samples_mqc.tsv')
+                .map { [[:], it] }
         )
+
+    if((!skip_linting) && (!skip_trimming)) {
+        FQ_LINT_AFTER_TRIMMING (
+            ch_filtered_reads
+        )
+        ch_lint_log = ch_lint_log.mix(FQ_LINT_AFTER_TRIMMING.out.lint)
+        ch_filtered_reads = ch_filtered_reads.join(FQ_LINT_AFTER_TRIMMING.out.lint.map{it[0]})
+    }
 
     //
     // MODULE: Remove genome contaminant reads
@@ -182,14 +255,21 @@ workflow PREPROCESS_RNASEQ {
             .set { ch_filtered_reads }
 
         ch_versions = ch_versions.mix(BBMAP_BBSPLIT.out.versions.first())
+
+        if(!skip_linting) {
+            FQ_LINT_AFTER_BBSPLIT (
+                ch_filtered_reads
+            )
+            ch_lint_log = ch_lint_log.mix(FQ_LINT_AFTER_BBSPLIT.out.lint)
+            ch_filtered_reads = ch_filtered_reads.join(FQ_LINT_AFTER_BBSPLIT.out.lint.map{it[0]})
+        }
     }
 
     //
     // MODULE: Remove ribosomal RNA reads
     //
     if (remove_ribo_rna) {
-        ch_sortmerna_fastas = Channel.from(ch_ribo_db.readLines())
-            .map { row -> file(row, checkIfExists: true) }
+        ch_sortmerna_fastas = ch_rrna_fastas
             .collect()
             .map{ ['rrna_refs', it] }
 
@@ -215,6 +295,14 @@ workflow PREPROCESS_RNASEQ {
             .mix(SORTMERNA.out.log)
 
         ch_versions = ch_versions.mix(SORTMERNA.out.versions.first())
+
+        if(!skip_linting) {
+            FQ_LINT_AFTER_SORTMERNA (
+                ch_filtered_reads
+            )
+            ch_lint_log = ch_lint_log.mix(FQ_LINT_AFTER_SORTMERNA.out.lint)
+            ch_filtered_reads = ch_filtered_reads.join(FQ_LINT_AFTER_SORTMERNA.out.lint.map{it[0]})
+        }
     }
 
     // Branch FastQ channels if 'auto' specified to infer strandedness
@@ -251,21 +339,26 @@ workflow PREPROCESS_RNASEQ {
 
     FASTQ_SUBSAMPLE_FQ_SALMON
         .out
-        .json_info
+        .lib_format_counts
         .join(ch_strand_fastq.auto_strand)
-        .map { meta, json, reads ->
-            return [ meta + [ strandedness: getSalmonInferredStrandedness(json) ], reads ]
+        .map {
+            meta, json, reads ->
+                def salmon_strand_analysis = getSalmonInferredStrandedness(json, stranded_threshold=stranded_threshold, unstranded_threshold=unstranded_threshold)
+                strandedness = salmon_strand_analysis.inferred_strandedness
+                if (strandedness == 'undetermined') {
+                    strandedness = 'unstranded'
+                }
+                return [ meta + [ strandedness: strandedness, salmon_strand_analysis: salmon_strand_analysis ], reads ]
         }
         .mix(ch_strand_fastq.known_strand)
         .set { ch_strand_inferred_fastq }
 
     emit:
 
+    lint_log        = ch_lint_log
     reads           = ch_strand_inferred_fastq
     trim_read_count = ch_trim_read_count
 
     multiqc_files   = ch_multiqc_files.transpose().map{it[1]}
     versions        = ch_versions                     // channel: [ versions.yml ]
 }
-
-
