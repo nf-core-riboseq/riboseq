@@ -41,8 +41,6 @@ workflow BAM_DEDUP_STATS_SAMTOOLS_UMICOLLAPSE {
     BAM_STATS_SAMTOOLS ( ch_bam_bai_dedup, [ [:], [] ] )
     ch_versions = ch_versions.mix(BAM_STATS_SAMTOOLS.out.versions)
 
-    UMICOLLAPSE.out.bam
-
     emit:
     bam            = UMICOLLAPSE.out.bam             // channel: [ val(meta), path(bam) ]
 
