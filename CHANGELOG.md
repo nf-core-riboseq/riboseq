@@ -29,14 +29,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### `Parameters`
 
-| Old parameter                        | New parameter   |
-| ------------------------------------ | --------------- |
-|                                      | `--help_full`   |
-|                                      | `--show_hidden` |
-| `--validationFailUnrecognisedParams` |                 |
-| `--validationLenientMode`            |                 |
-| `--validationSchemaIgnoreParams`     |                 |
-| `--validationShowHiddenParams`       |                 |
+| Old parameter                        | New parameter         |
+| ------------------------------------ | --------------------- |
+|                                      | `--help_full`         |
+|                                      | `--show_hidden`       |
+|                                      | `--skip_linting`      |
+|                                      | `--extra_fqlint_args` |
+|                                      | `--umi_dedup_tool`    |
+| `--validationFailUnrecognisedParams` |                       |
+| `--validationLenientMode`            |                       |
+| `--validationSchemaIgnoreParams`     |                       |
+| `--validationShowHiddenParams`       |                       |
 
 ### `Deprecated`
 
