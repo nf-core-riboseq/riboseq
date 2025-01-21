@@ -243,6 +243,7 @@ workflow RIBOSEQ {
         }
 
     ch_bams_for_analysis = ch_genome_bam_by_type.riboseq.join(ch_genome_bam_index)
+    ch_fasta_gtf = ch_fasta.combine(ch_gtf).map{ fasta, gtf -> [ [:], fasta, gtf ] }.first()
 
     if (!params.skip_ribotish){
         RIBOTISH_QUALITY_RIBOSEQ(
@@ -257,8 +258,6 @@ workflow RIBOSEQ {
                 bam: [ meta, bam, bai ]
                 offset: [ meta, offset ]
             }
-
-        ch_fasta_gtf = ch_fasta.combine(ch_gtf).map{ fasta, gtf -> [ [:], fasta, gtf ] }.first()
 
         RIBOTISH_PREDICT_INDIVIDUAL(
             ribotish_predict_inputs.bam,
