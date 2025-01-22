@@ -65,7 +65,6 @@ jobs:
       matrix:
         NXF_VER:
           - "24.04.2"
-          - "latest-everything"
         profile:
           - "conda"
           - "docker"
