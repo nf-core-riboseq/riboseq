@@ -1069,11 +1069,7 @@
                 "SRX11780890.para.py:md5,5f1696c5bf20116fa63363917e131284",
                 "SRX11780890_qual.txt:md5,0f761538ecafb2718bd781c6e1fb7dc1",
                 "treated_vs_control.R_sessionInfo.log:md5,3623a50b4668bfebf502bf7080800996",
-                "treated_vs_control.buffering.anota2seq.results.tsv:md5,2fe9f937974cf27b6c7f5a1c62c5a64b",
-                "treated_vs_control.mRNA_abundance.anota2seq.results.tsv:md5,68b329da9893e34099c7d8ad5cb9c940",
-                "treated_vs_control.total_mRNA.anota2seq.results.tsv:md5,53c1c05d223b7fd5738ce3caaa8333ac",
-                "treated_vs_control.translated_mRNA.anota2seq.results.tsv:md5,309ed96bb0de32c2dcc20e11158be09f",
-                "treated_vs_control.translation.anota2seq.results.tsv:md5,c96c39da0c48ee29f3827c9d8f2f9feb"
+                "treated_vs_control.mRNA_abundance.anota2seq.results.tsv:md5,68b329da9893e34099c7d8ad5cb9c940"
             ]
         ],
         "meta": {
