@@ -1068,14 +1068,13 @@
                 "SRX11780889_qual.txt:md5,4c567c2c47eb52bf81e514a39eb5a695",
                 "SRX11780890.para.py:md5,5f1696c5bf20116fa63363917e131284",
                 "SRX11780890_qual.txt:md5,0f761538ecafb2718bd781c6e1fb7dc1",
-                "treated_vs_control.R_sessionInfo.log:md5,3623a50b4668bfebf502bf7080800996",
-                "treated_vs_control.mRNA_abundance.anota2seq.results.tsv:md5,68b329da9893e34099c7d8ad5cb9c940"
+                "treated_vs_control.R_sessionInfo.log:md5,3623a50b4668bfebf502bf7080800996"
             ]
         ],
         "meta": {
             "nf-test": "0.9.2",
             "nextflow": "24.10.4"
         },
-        "timestamp": "2025-01-23T15:09:02.725282507"
+        "timestamp": "2025-01-23T17:23:55.759142246"
     }
 }
