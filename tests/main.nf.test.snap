@@ -969,7 +969,7 @@
                 "multiqc_fastqc_1.txt:md5,c8ce8940114de9321e6de124b6cb4c18",
                 "multiqc_samtools_flagstat.txt:md5,c391c7b07d5c43b1295d1fbd7d9569be",
                 "multiqc_samtools_idxstats.txt:md5,f8a3738b2c854196a937e7f4f7c37a07",
-                "multiqc_samtools_stats.txt:md5,54c18fc06144c3537ccaea3f12cfe605",
+                "multiqc_samtools_stats.txt:md5,aa86208792bcdfd2b0eb7a27025dbeb5",
                 "multiqc_sortmerna.txt:md5,c8afeeb1affb9ae109ae2a9204c67d1f",
                 "multiqc_star.txt:md5,9bd355c06526d23fa2bb0fcd931d146c",
                 "samtools-flagstat-dp_Percentage_of_total.txt:md5,829c635a25a0b09dd18f6b176a7de6a4",
