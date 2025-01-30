@@ -332,6 +332,8 @@ contrast_matrix <- matrix(
     dimnames=list(c(opt\$reference_level, opt\$target_level),c()),
     c(-1,1)
 )
+# order of the matrix needs to ne sorted by alphanumeric order of the rownames. See https://github.com/nf-core/riboseq/issues/68
+contrast_matrix <- contrast_matrix[match(sort(rownames(contrast_matrix)), rownames(contrast_matrix)), , drop = FALSE]
 
 ads <- anota2seqRun(
     ads,
