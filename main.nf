@@ -107,6 +107,7 @@ workflow NFCORE_RIBOSEQ {
         PREPARE_GENOME.out.star_index,
         PREPARE_GENOME.out.salmon_index,
         PREPARE_GENOME.out.bbsplit_index,
+        PREPARE_GENOME.out.rrna_fastas,
         PREPARE_GENOME.out.sortmerna_index,
     )
     ch_versions = ch_versions.mix(RIBOSEQ.out.versions)

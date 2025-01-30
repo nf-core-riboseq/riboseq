@@ -199,6 +199,12 @@
             "description": "Options for filtering reads prior to alignment",
             "default": "",
             "properties": {
+                "extra_fqlint_args": {
+                    "type": "string",
+                    "default": "--disable-validator P001",
+                    "description": "Extra arguments to pass to the fq lint command.",
+                    "fa_icon": "far fa-check-square"
+                },
                 "bbsplit_fasta_list": {
                     "type": "string",
                     "format": "file-path",
@@ -254,6 +260,13 @@
                     "type": "boolean",
                     "fa_icon": "fas fa-barcode",
                     "description": "Enable UMI-based read deduplication."
+                },
+                "umi_dedup_tool": {
+                    "type": "string",
+                    "default": "umitools",
+                    "description": "Specifies the tool to use for UMI deduplication - available options are 'umitools' and 'umicollapse'.",
+                    "fa_icon": "fas fa-barcode",
+                    "enum": ["umitools", "umicollapse"]
                 },
                 "umitools_extract_method": {
                     "type": "string",
@@ -374,6 +387,20 @@
                     "type": "string",
                     "description": "Extra arguments to pass to Salmon quant command in addition to defaults defined by the pipeline.",
                     "fa_icon": "fas fa-plus"
+                },
+                "stranded_threshold": {
+                    "type": "number",
+                    "minimum": 0.5,
+                    "maximum": 1,
+                    "default": 0.8,
+                    "description": "The fraction of stranded reads that must be assigned to a strandedness for confident assignment. Must be at least 0.5."
+                },
+                "unstranded_threshold": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "default": 0.1,
+                    "description": "The difference in fraction of stranded reads assigned to 'forward' and 'reverse' below which a sample is classified as 'unstranded'. By default the forward and reverse fractions must differ by less than 0.1 for the sample to be called as unstranded."
                 }
             }
         },
@@ -486,6 +513,11 @@
                     "type": "boolean",
                     "fa_icon": "fas fa-compress-alt",
                     "description": "Skip the UMI extraction from the read in case the UMIs have been moved to the headers in advance of the pipeline run."
+                },
+                "skip_linting": {
+                    "type": "boolean",
+                    "fa_icon": "fas fa-fast-forward",
+                    "description": "Skip linting checks during FASTQ preprocessing and filtering."
                 },
                 "skip_trimming": {
                     "type": "boolean",
@@ -679,6 +711,12 @@
                     "fa_icon": "far fa-check-circle",
                     "description": "Base URL or local path to location of pipeline test dataset files",
                     "default": "https://raw.githubusercontent.com/nf-core/test-datasets/",
+                    "hidden": true
+                },
+                "trace_report_suffix": {
+                    "type": "string",
+                    "fa_icon": "far calendar",
+                    "description": "Suffix to add to the trace report filename. Default is the date and time in the format yyyy-MM-dd_HH-mm-ss.",
                     "hidden": true
                 }
             }
