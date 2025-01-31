@@ -7,7 +7,7 @@
                 "nf-core": {
                     "anota2seq/anota2seqrun": {
                         "branch": "master",
-                        "git_sha": "08108058ea36a63f141c25c4e75f9f872a5b2296",
+                        "git_sha": "94ca1fdb00803600f909540c8d7324dd2b997df8",
                         "installed_by": ["modules"]
                     },
                     "bbmap/bbsplit": {
