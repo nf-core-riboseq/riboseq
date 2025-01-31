@@ -326,6 +326,7 @@ workflow RIBOSEQ {
         ch_samplesheet_matrix = QUANTIFY_STAR_SALMON.out.counts_gene_length_scaled
             .combine(ch_samplesheet)
             .map{[it[0], it[2], it[1]]}
+            .first()
 
         ANOTA2SEQ_ANOTA2SEQRUN(
             ch_contrasts,
