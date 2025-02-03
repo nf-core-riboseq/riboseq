@@ -9,8 +9,6 @@
 ----------------------------------------------------------------------------------------
 */
 
-nextflow.enable.dsl = 2
-
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     IMPORT FUNCTIONS / MODULES / SUBWORKFLOWS / WORKFLOWS
@@ -21,7 +19,6 @@ include { RIBOSEQ                 } from './workflows/riboseq'
 include { PREPARE_GENOME          } from './subworkflows/local/prepare_genome'
 include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_riboseq_pipeline'
 include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_riboseq_pipeline'
-
 include { getGenomeAttribute      } from './subworkflows/local/utils_nfcore_riboseq_pipeline'
 include { checkMaxContigSize      } from './subworkflows/local/utils_nfcore_riboseq_pipeline'
 
@@ -73,7 +70,6 @@ workflow NFCORE_RIBOSEQ {
         params.sortmerna_index,
         params.gencode,
         params.aligner,
-        params.pseudo_aligner,
         params.skip_gtf_filter,
         params.skip_bbsplit,
         ! params.remove_ribo_rna,
@@ -111,6 +107,7 @@ workflow NFCORE_RIBOSEQ {
         PREPARE_GENOME.out.star_index,
         PREPARE_GENOME.out.salmon_index,
         PREPARE_GENOME.out.bbsplit_index,
+        PREPARE_GENOME.out.rrna_fastas,
         PREPARE_GENOME.out.sortmerna_index,
     )
     ch_versions = ch_versions.mix(RIBOSEQ.out.versions)
@@ -130,13 +127,11 @@ workflow NFCORE_RIBOSEQ {
 workflow {
 
     main:
-
     //
     // SUBWORKFLOW: Run initialisation tasks
     //
     PIPELINE_INITIALISATION (
         params.version,
-        params.help,
         params.validate_params,
         params.monochrome_logs,
         args,

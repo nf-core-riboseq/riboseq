@@ -1,6 +1,5 @@
-repository_type: pipeline
 lint:
-  actions_ci: False
+  actions_ci: false
   files_unchanged:
     - .gitignore
     - assets/nf-core-riboseq_logo_light.png
@@ -9,3 +8,14 @@ lint:
   nextflow_config:
     - config_defaults:
         - params.ribo_database_manifest
+nf_core_version: 3.2.0
+repository_type: pipeline
+template:
+  author: Jonathan Manning
+  description: Analysis of ribosome profiling, or Ribo-seq (also named ribosome footprinting)
+  force: false
+  is_nfcore: true
+  name: riboseq
+  org: nf-core
+  outdir: .
+  version: 1.1.0dev

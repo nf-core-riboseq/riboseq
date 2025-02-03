@@ -1,16 +1,22 @@
 name: nf-core CI
 # This workflow runs the pipeline with the minimal test dataset to check that it completes without any syntax errors
 on:
+  push:
+    branches:
+      - dev
   pull_request:
   release:
     types: [published]
+  workflow_dispatch:
 
 env:
-  NXF_ANSI_LOG: false
-  NFT_VER: "0.8.4"
-  NFT_WORKDIR: "~"
   NFT_DIFF: "pdiff"
   NFT_DIFF_ARGS: "--line-numbers --expand-tabs=2"
+  NFT_VER: "0.8.4"
+  NFT_WORKDIR: "~"
+  NXF_ANSI_LOG: false
+  NXF_SINGULARITY_CACHEDIR: ${{ github.workspace }}/.singularity
+  NXF_SINGULARITY_LIBRARYDIR: ${{ github.workspace }}/.singularity
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
@@ -50,53 +56,66 @@ jobs:
           echo ${{ steps.list.outputs.nf_test_files }}
 
   test:
-    name: ${{ matrix.nf_test_files }} ${{ matrix.profile }} NF-${{ matrix.NXF_VER }}
+    name: "Run pipeline with test data (${{ matrix.nf_test_files }} ${{ matrix.profile }} NF-${{ matrix.NXF_VER }})"
     needs: [nf-test-changes]
-    if: needs.nf-test-changes.outputs.nf_test_files != '[]'
+    # Only run on push if this is the nf-core dev branch (merged PRs)
+    if: "${{ ((github.event_name != 'push' || (github.event_name == 'push' && github.repository == 'nf-core/riboseq')) && needs.nf-test-changes.outputs.nf_test_files != '[]') }}"
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
         NXF_VER:
-          - "latest-everything"
-          - "23.04"
-        nf_test_files: ["${{ fromJson(needs.nf-test-changes.outputs.nf_test_files) }}"]
+          - "24.04.2"
         profile:
           - "docker"
-
+          - "singularity"
+        isMaster:
+          - ${{ github.base_ref == 'master' }}
+        # Exclude singularity on dev
+        nf_test_files: ["${{ fromJson(needs.nf-test-changes.outputs.nf_test_files) }}"]
+        exclude:
+          - isMaster: false
+            profile: "singularity"
+          - nf_test_files: "subworkflows/nf-core/utils_nfschema_plugin/tests/main.nf.test"
     steps:
       - name: Check out pipeline code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 0
 
-      - name: Install Nextflow
+      - name: Set up Nextflow
         uses: nf-core/setup-nextflow@v2
         with:
           version: "${{ matrix.NXF_VER }}"
 
-      - uses: actions/setup-python@v4
+      - name: Set up nf-test
+        uses: nf-core/setup-nf-test@v1
         with:
-          python-version: "3.11"
-          architecture: "x64"
+          version: ${{ env.NFT_VER }}
 
-      - name: Install pdiff to see diff between nf-test snapshots
+      - name: Set up Apptainer
+        if: matrix.profile == 'singularity'
+        uses: eWaterCycle/setup-apptainer@main
+
+      - name: Set up Singularity
+        if: matrix.profile == 'singularity'
+        run: |
+          mkdir -p $NXF_SINGULARITY_CACHEDIR
+          mkdir -p $NXF_SINGULARITY_LIBRARYDIR
+
+      - name: Cache pdiff
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
+        id: cache-pip-pdiff
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-pdiff
+
+      - name: Set up pdiff to see diff between nf-test snapshots
         run: |
           python -m pip install --upgrade pip
-          pip install pdiff
+          pip install pdiff cryptography
 
-      - name: Cache nf-test installation
-        id: cache-software
-        uses: actions/cache@v3
-        with:
-          path: |
-            /usr/local/bin/nf-test
-            /home/runner/.nf-test/nf-test.jar
-          key: ${{ runner.os }}-${{ env.NFT_VER }}-nftest
-
-      - name: Install nf-test
-        if: steps.cache-software.outputs.cache-hit != 'true'
-        run: |
-          wget -qO- https://code.askimed.com/install/nf-test | bash
-          sudo mv nf-test /usr/local/bin/
+      - name: Disk space cleanup
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
 
       - name: Run nf-test
         run: |
